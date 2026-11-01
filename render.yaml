@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: softtv-requests
+    runtime: node
+    plan: free
+    buildCommand: node --check server.js && node --check storage.js
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
