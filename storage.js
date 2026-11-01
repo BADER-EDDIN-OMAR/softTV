@@ -25,15 +25,22 @@ export async function createStore(root) {
  };
 }
 
-export function createSupabaseStore({url,key,fetchImpl=fetch}) {
+export function createSupabaseStore({url,key,fetchImpl=fetch,logger=console.warn}) {
  let base;
  try{base=new URL(typeof url==='string'?url.trim():'');}catch{throw new Error('SUPABASE_URL must be your Supabase HTTPS Project URL, not a password or API key');}
  if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw new Error('SUPABASE_URL must be an HTTPS origin');
  const endpoint=base.origin;
+ key=key.trim();
+ let lastDiagnostic="",lastDiagnosticAt=0;
+ function diagnose(reason){const now=Date.now();if(reason!==lastDiagnostic||now-lastDiagnosticAt>30000){logger("Supabase connection check: "+reason);lastDiagnostic=reason;lastDiagnosticAt=now;}}
  async function call(path,{method='GET',body,mime,representation=false,binary=false}={}){
   let response;
-  try{response=await fetchImpl(endpoint+path,{method,headers:{apikey:key,Authorization:`Bearer ${key}`,...(body?{'Content-Type':mime||'application/json'}:{}),...(representation?{Prefer:'return=representation'}:{})},body,signal:AbortSignal.timeout(15000)});}catch{throw unavailable();}
-  if(!response.ok)throw unavailable();
+  try{response=await fetchImpl(endpoint+path,{method,headers:{apikey:key,Authorization:`Bearer ${key}`,...(body?{'Content-Type':mime||'application/json'}:{}),...(representation?{Prefer:'return=representation'}:{})},body,signal:AbortSignal.timeout(15000)});}catch{diagnose("network connection failed or timed out; verify project URL and project availability");throw unavailable();}
+  if(!response.ok){
+   const hints={401:"check SUPABASE_SERVICE_ROLE_KEY; use the service_role key from the SAME project, not a database password",403:"check service_role key and database permissions",404:"check project URL and run supabase/setup.sql in the SAME project",429:"Supabase rate limit reached; check project quotas"};
+   diagnose("HTTP "+response.status+"; "+(hints[response.status]||"check Supabase project status and database setup"));
+   throw unavailable();
+  }
   if(binary)return Buffer.from(await response.arrayBuffer());
   if(response.status===204)return null;
   const raw=await response.text();return raw?JSON.parse(raw):null;

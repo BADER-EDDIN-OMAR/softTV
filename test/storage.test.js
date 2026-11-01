@@ -26,3 +26,10 @@ test('invalid project URL never exposes its input in errors',()=>{
  const input='dummy-private-value-for-test';
  assert.throws(()=>createSupabaseStore({url:input,key:'test-key'}),error=>{assert.match(error.message,/SUPABASE_URL/);assert.ok(!error.stack.includes(input));assert.equal(error.input,undefined);assert.equal(error.cause,undefined);return true;});
 });
+
+test('connection diagnostics expose only safe status hints and suppress repeats',async()=>{
+ const lines=[];
+ const store=createSupabaseStore({url:'https://test-project.supabase.co',key:'private-test-key',logger:line=>lines.push(line),fetchImpl:async()=>new Response('private upstream body',{status:401})});
+ await assert.rejects(()=>store.health());await assert.rejects(()=>store.health());
+ assert.equal(lines.length,1);assert.match(lines[0],/HTTP 401/);assert.match(lines[0],/service_role/);assert.ok(!lines[0].includes('private-test-key'));assert.ok(!lines[0].includes('private upstream body'));
+});
