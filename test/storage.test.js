@@ -21,3 +21,8 @@ test('remote storage contract: private API auth, filters, files and errors',asyn
  const offline=createSupabaseStore({url:'https://test-project.supabase.co',key:'test-key',fetchImpl:async()=>{throw new Error('upstream secret text');}});await assert.rejects(()=>offline.health(),e=>e.status===503&&!e.message.includes('upstream'));
  assert.throws(()=>createSupabaseStore({url:'http://example.com',key:'x'}),/HTTPS/);
 });
+
+test('invalid project URL never exposes its input in errors',()=>{
+ const input='dummy-private-value-for-test';
+ assert.throws(()=>createSupabaseStore({url:input,key:'test-key'}),error=>{assert.match(error.message,/SUPABASE_URL/);assert.ok(!error.stack.includes(input));assert.equal(error.input,undefined);assert.equal(error.cause,undefined);return true;});
+});

@@ -26,7 +26,9 @@ export async function createStore(root) {
 }
 
 export function createSupabaseStore({url,key,fetchImpl=fetch}) {
- const base=new URL(url);if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw new Error('SUPABASE_URL must be an HTTPS origin');
+ let base;
+ try{base=new URL(typeof url==='string'?url.trim():'');}catch{throw new Error('SUPABASE_URL must be your Supabase HTTPS Project URL, not a password or API key');}
+ if(base.protocol!=='https:'||base.username||base.password||base.pathname!=='/'||base.search||base.hash)throw new Error('SUPABASE_URL must be an HTTPS origin');
  const endpoint=base.origin;
  async function call(path,{method='GET',body,mime,representation=false,binary=false}={}){
   let response;
